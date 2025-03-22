@@ -3,10 +3,17 @@
 import { useAuth } from "@/lib/store/useAuth";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PropsWithChildren } from "react";
+import { useHydration } from "@/lib/hooks/useHydration";
 
 export default function AuthLayout({ children }: PropsWithChildren) {
-  const { isLoggedIn, login, logout } = useAuth();
+  const { isLoggedIn, user, login, logout } = useAuth();
+  const hydrated = useHydration(); 
+
+  if (!hydrated) return null;
+
+  const router = useRouter();
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -15,15 +22,23 @@ export default function AuthLayout({ children }: PropsWithChildren) {
           <h1 className="text-xl font-bold">ReviewGeo</h1>
         </Link>
         <nav className="space-x-4">
-          {isLoggedIn ? (
+          {isLoggedIn && user ? (
             <>
-              <Button variant="ghost" onClick={logout}>Logout</Button>
-              <Link href="/profile"><Button>Profile</Button></Link>
+              <Link href="/profile">
+                <Button variant="default">Profile</Button>
+              </Link>
+              <Button variant="ghost" onClick={logout}>
+                Logout
+              </Button>
             </>
           ) : (
             <>
-              <Button variant="ghost" onClick={login}>Login</Button>
-              <Button onClick={login}>Register</Button>
+              <Link href="/login">
+                <Button variant="ghost">Login</Button>
+              </Link>
+              <Link href="/register">
+                <Button>Register</Button>
+              </Link>
             </>
           )}
         </nav>
