@@ -6,14 +6,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PropsWithChildren } from "react";
 import { useHydration } from "@/lib/hooks/useHydration";
+import { toast } from "sonner";
 
 export default function AuthLayout({ children }: PropsWithChildren) {
   const { isLoggedIn, user, login, logout } = useAuth();
-  const hydrated = useHydration(); 
+  const hydrated = useHydration();
+  const router = useRouter();
 
   if (!hydrated) return null;
-
-  const router = useRouter();
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -27,7 +27,14 @@ export default function AuthLayout({ children }: PropsWithChildren) {
               <Link href="/profile">
                 <Button variant="default">Profile</Button>
               </Link>
-              <Button variant="ghost" onClick={logout}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  logout();
+                  toast("You have been logged out.");
+                  router.push("/");
+                }}
+              >
                 Logout
               </Button>
             </>
