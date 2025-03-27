@@ -1,19 +1,47 @@
 "use client";
 
+import { useState } from "react";
 import {
   Dialog,
-  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { useAuth } from "@/lib/store/useAuth";
+import { toast } from "sonner";
 
-export function SubmitComplaint() {
-  const [description, setDescription] = useState("");
-  const [isPublic, setIsPublic] = useState(true);
+interface Props {
+  businessId: string;
+}
+
+export function SubmitComplaint({ businessId }: Props) {
+  const { user } = useAuth();
+  const [text, setText] = useState("");
+
+  const handleSubmit = () => {
+    if (!text.trim()) return toast.error("Please write your complaint");
+
+    const stored = localStorage.getItem("complaints");
+    const data = stored ? JSON.parse(stored) : {};
+
+    if (!user?.email) return;
+
+    if (!data[user.email]) data[user.email] = [];
+    data[user.email].push({
+      businessId,
+      text: text.trim(),
+      date: new Date().toISOString(),
+    });
+
+    localStorage.setItem("complaints", JSON.stringify(data));
+    toast.success("Complaint submitted!");
+    setText("");
+  };
+
+  if (!user) return null;
 
   return (
     <Dialog>
@@ -22,37 +50,16 @@ export function SubmitComplaint() {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Submit a Complaint</DialogTitle>
+          <DialogTitle>Submit Complaint</DialogTitle>
         </DialogHeader>
-
-        <label className="text-sm font-medium">Description</label>
         <Textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe your complaint..."
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Write your complaint..."
+          rows={4}
         />
-
-        <div className="mt-2 flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="public"
-            checked={isPublic}
-            onChange={() => setIsPublic(!isPublic)}
-          />
-          <label htmlFor="public" className="text-sm">
-            Make this complaint public
-          </label>
-        </div>
-
-        <Button
-          className="mt-4"
-          disabled={description.trim().length < 10}
-          onClick={() => {
-            alert(`Complaint submitted: ${description} | Public: ${isPublic}`);
-            setDescription("");
-          }}
-        >
-          Submit Complaint
+        <Button onClick={handleSubmit} className="w-full mt-4">
+          Submit
         </Button>
       </DialogContent>
     </Dialog>

@@ -1,140 +1,90 @@
 "use client";
 
+import { useAuth } from "@/lib/store/useAuth";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { businesses } from "@/lib/data/businesses";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
-export default function HomePage() {
-  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [businessLabels, setBusinessLabels] = useState<Record<string, string[]>>({});
-  const [allLabels, setAllLabels] = useState<string[]>([]);
+export default function ProfilePage() {
+  const { user, logout, isLoggedIn } = useAuth();
+  const router = useRouter();
+
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [complaints, setComplaints] = useState<any[]>([]);
+  const [groupedFavorites, setGroupedFavorites] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
-    const stored = localStorage.getItem("reviews");
-    if (!stored) return;
+    if (!isLoggedIn) router.push("/login");
+  }, [isLoggedIn, router]);
 
-    const parsed = JSON.parse(stored);
-    const labelMap: Record<string, string[]> = {};
-    const labelSet = new Set<string>();
+  useEffect(() => {
+    if (!user?.email) return;
 
-    Object.entries(parsed).forEach(([businessId, reviews]: [string, any]) => {
-      const labels: string[] = [];
+    const storedReviews = localStorage.getItem("reviews");
+    const storedComplaints = localStorage.getItem("complaints");
+    const storedFavorites = localStorage.getItem("favoritesByGroup");
 
-      reviews.forEach((r: any) => {
-        if (r.labels && Array.isArray(r.labels)) {
-          r.labels.forEach((label: string) => {
-            const tag = label.toLowerCase().trim();
-            labels.push(tag);
-            labelSet.add(tag);
-          });
-        }
-      });
+    const parsedReviews = storedReviews ? JSON.parse(storedReviews) : {};
+    const parsedComplaints = storedComplaints ? JSON.parse(storedComplaints) : {};
+    const parsedFavorites = storedFavorites ? JSON.parse(storedFavorites) : {};
 
-      if (labels.length > 0) {
-        labelMap[businessId] = labels;
-      }
-    });
+    const userReviews = Object.entries(parsedReviews)
+      .flatMap(([businessId, revs]: [string, any]) =>
+        (revs as any[]).filter((r) => r.email === user.email).map((r) => ({
+          ...r,
+          businessId,
+        }))
+      );
 
-    setBusinessLabels(labelMap);
-    setAllLabels(Array.from(labelSet));
-  }, []);
+    const userComplaints = parsedComplaints[user.email] || [];
 
-  const filteredBusinesses = businesses.filter((b) => {
-    const matchesSearch =
-      b.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.city.toLowerCase().includes(searchTerm.toLowerCase());
+    setReviews(userReviews);
+    setComplaints(userComplaints);
+    setGroupedFavorites(parsedFavorites[user.email] || {});
+  }, [user?.email]);
 
-    const matchesLabel = selectedLabel
-      ? businessLabels[b.id]?.includes(selectedLabel.toLowerCase())
-      : true;
-
-    return matchesSearch && matchesLabel;
-  });
-
-  const clearFilters = () => {
-    setSelectedLabel(null);
-    setSearchTerm("");
-  };
+  if (!user) return null;
 
   return (
-    <main className="bg-gray-50 min-h-screen">
-      {/* Sticky Filter Bar */}
-      <div className="sticky top-0 z-10 bg-white border-b px-6 py-4 shadow-sm">
-        <h1 className="text-2xl font-bold mb-2">ReviewGeo</h1>
+    <main className="px-6 py-8">
+      <h1 className="text-2xl font-bold mb-2">Welcome, {user.name} 👋</h1>
+      <p className="text-muted-foreground mb-4">{user.email}</p>
 
-        <input
-          type="text"
-          placeholder="Search businesses or categories..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="mb-3 w-full max-w-md px-4 py-2 border rounded-md shadow-sm"
-        />
+      <Tabs defaultValue="reviews" className="mb-6">
+        <TabsList>
+          <TabsTrigger value="reviews">My Reviews</TabsTrigger>
+          <TabsTrigger value="complaints">My Complaints</TabsTrigger>
+          <TabsTrigger value="bookmarks">Bookmarks</TabsTrigger>
+        </TabsList>
 
-        {allLabels.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-2">
-            <button
-              onClick={() => setSelectedLabel(null)}
-              className={`text-sm px-3 py-1 rounded-full border ${
-                selectedLabel === null
-                  ? "bg-black text-white"
-                  : "bg-white text-black hover:bg-gray-100"
-              }`}
-            >
-              All
-            </button>
-            {allLabels.map((label) => (
-              <button
-                key={label}
-                onClick={() => setSelectedLabel(label)}
-                className={`text-sm px-3 py-1 rounded-full border ${
-                  selectedLabel === label
-                    ? "bg-blue-600 text-white"
-                    : "bg-white text-black hover:bg-gray-100"
-                }`}
-              >
-                #{label}
-              </button>
-            ))}
-
-            {searchTerm || selectedLabel ? (
-              <button
-                onClick={clearFilters}
-                className="ml-auto text-sm px-3 py-1 border border-red-500 text-red-500 hover:bg-red-100 rounded-full"
-              >
-                Clear All
-              </button>
-            ) : null}
-          </div>
-        )}
-      </div>
-
-      {/* Business Grid */}
-      <div className="px-6 py-6">
-        {filteredBusinesses.length === 0 ? (
-          <p className="text-muted-foreground">No businesses found.</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {filteredBusinesses.map((business) => (
-              <Link key={business.id} href={`/business/${business.id}`}>
-                <Card className="hover:shadow-md transition">
-                  <CardContent className="p-4 space-y-1">
-                    <h2 className="text-lg font-semibold">{business.name}</h2>
-                    <p className="text-sm text-muted-foreground">
-                      {business.category} • {business.city}
-                    </p>
-                    <p className="text-sm text-yellow-600">
-                      ★ {business.rating} ({business.reviewCount} reviews)
-                    </p>
-
-                    {/* Show tag highlights */}
-                    {businessLabels[business.id]?.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {businessLabels[business.id]
-                          .slice(0, 3)
-                          .map((label, idx) => (
+        {/* Reviews */}
+        <TabsContent value="reviews">
+          {reviews.length === 0 ? (
+            <Card>
+              <CardContent className="p-4 text-sm text-muted-foreground">
+                You haven’t submitted any reviews yet.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {reviews.map((r, i) => {
+                const b = businesses.find((b) => b.id === r.businessId);
+                return (
+                  <Card key={i}>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold">{b?.name}</h3>
+                      <p className="text-sm mt-1">{r.text}</p>
+                      {r.labels?.length > 0 && (
+                        <div className="flex gap-2 mt-2 flex-wrap">
+                          {r.labels.map((label: string, idx: number) => (
                             <span
                               key={idx}
                               className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full"
@@ -142,15 +92,86 @@ export default function HomePage() {
                               #{label}
                             </span>
                           ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Complaints */}
+        <TabsContent value="complaints">
+          {complaints.length === 0 ? (
+            <Card>
+              <CardContent className="p-4 text-sm text-muted-foreground">
+                You haven’t submitted any complaints yet.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {complaints.map((c, i) => {
+                const b = businesses.find((b) => b.id === c.businessId);
+                return (
+                  <Card key={i}>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold">{b?.name}</h3>
+                      <p className="text-sm mt-1">{c.text}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Submitted: {new Date(c.date).toLocaleString()}
+                      </p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Bookmarks */}
+        <TabsContent value="bookmarks">
+          {Object.keys(groupedFavorites).length === 0 ? (
+            <Card>
+              <CardContent className="p-4 text-sm text-muted-foreground">
+                You haven’t saved any businesses to lists yet.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              {Object.entries(groupedFavorites).map(([groupName, ids]) => {
+                const groupBusinesses = businesses.filter((b) =>
+                  ids.includes(b.id)
+                );
+                return (
+                  <div key={groupName}>
+                    <h2 className="text-lg font-semibold mb-2">{groupName}</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                      {groupBusinesses.map((b) => (
+                        <Card key={b.id} className="hover:shadow-md transition">
+                          <CardContent className="p-4 space-y-1">
+                            <a href={`/business/${b.id}`}>
+                              <h3 className="font-semibold">{b.name}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                {b.category} • {b.city}
+                              </p>
+                            </a>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      <Button variant="destructive" onClick={logout}>
+        Logout
+      </Button>
     </main>
   );
 }

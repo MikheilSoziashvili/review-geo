@@ -4,18 +4,28 @@ import { useEffect, useState } from "react";
 import { businesses } from "@/lib/data/businesses";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
+import { useHydration } from "@/lib/hooks/useHydration";
+import { useAuth } from "@/lib/store/useAuth";
+import { SaveToGroupModal } from "@/components/SaveToGroupModal";
+import { Button } from "@/components/ui/button";
 
 export default function HomePage() {
+  const hydrated = useHydration();
+  const { user, isLoggedIn } = useAuth();
+
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [businessLabels, setBusinessLabels] = useState<Record<string, string[]>>({});
   const [allLabels, setAllLabels] = useState<string[]>([]);
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+
+  const emailKey = user?.email || "guest";
 
   useEffect(() => {
-    const stored = localStorage.getItem("reviews");
-    if (!stored) return;
+    if (!hydrated) return;
 
-    const parsed = JSON.parse(stored);
+    const stored = localStorage.getItem("reviews");
+    const parsed = stored ? JSON.parse(stored) : {};
     const labelMap: Record<string, string[]> = {};
     const labelSet = new Set<string>();
 
@@ -39,7 +49,27 @@ export default function HomePage() {
 
     setBusinessLabels(labelMap);
     setAllLabels(Array.from(labelSet));
-  }, []);
+  }, [hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+
+    const stored = localStorage.getItem("favoritesByGroup");
+    const parsed = stored ? JSON.parse(stored) : {};
+    const userData = parsed[emailKey] || {};
+    const ids = Object.values(userData).flat();
+    setSavedIds(ids);
+  }, [hydrated, emailKey]);
+
+  const updateSavedState = () => {
+    const stored = localStorage.getItem("favoritesByGroup");
+    const parsed = stored ? JSON.parse(stored) : {};
+    const userData = parsed[emailKey] || {};
+    const ids = Object.values(userData).flat();
+    setSavedIds(ids);
+  };
+
+  if (!hydrated) return null;
 
   const filteredBusinesses = businesses.filter((b) => {
     const matchesSearch =
@@ -63,7 +93,7 @@ export default function HomePage() {
         placeholder="Search businesses or categories..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        className="mb-6 w-full max-w-md px-4 py-2 border rounded-md shadow-sm"
+        className="mb-4 w-full max-w-md px-4 py-2 border rounded-md shadow-sm"
       />
 
       {allLabels.length > 0 && (
@@ -99,9 +129,9 @@ export default function HomePage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {filteredBusinesses.map((business) => (
-            <Link key={business.id} href={`/business/${business.id}`}>
-              <Card className="hover:shadow-md transition">
-                <CardContent className="p-4">
+            <Card key={business.id} className="hover:shadow-md transition">
+              <CardContent className="p-4">
+                <Link href={`/business/${business.id}`}>
                   <h2 className="text-lg font-semibold">{business.name}</h2>
                   <p className="text-sm text-muted-foreground">
                     {business.category} • {business.city}
@@ -109,9 +139,25 @@ export default function HomePage() {
                   <p className="text-sm mt-2 text-yellow-600">
                     ★ {business.rating} ({business.reviewCount} reviews)
                   </p>
-                </CardContent>
-              </Card>
-            </Link>
+                </Link>
+
+                {isLoggedIn && (
+                  <div className="mt-3">
+                    {savedIds.includes(business.id) ? (
+                      <Button disabled variant="secondary" size="sm">
+                        ✔ Added
+                      </Button>
+                    ) : (
+                      <SaveToGroupModal
+                        businessId={business.id}
+                        businessCategory={business.category}
+                        onSave={updateSavedState}
+                      />
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

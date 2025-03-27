@@ -10,6 +10,8 @@ import BusinessInfo from "@/components/BusinessInfo";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/store/useAuth";
 import { toast } from "sonner";
+import { SaveToGroupModal } from "@/components/SaveToGroupModal";
+import { Button } from "@/components/ui/button";
 
 interface BusinessPageProps {
   params: {
@@ -61,6 +63,18 @@ export default function BusinessPage({ params }: BusinessPageProps) {
     toast.success("Review updated.");
   };
 
+  const emailKey = user?.email || "guest";
+
+  const isSaved = (() => {
+    const stored = localStorage.getItem("favoritesByGroup");
+    if (!stored) return false;
+    const parsed = JSON.parse(stored);
+    const userGroups = parsed[emailKey] || {};
+    return Object.values(userGroups).some((group) =>
+      group.includes(business.id)
+    );
+  })();
+
   return (
     <main className="min-h-screen px-6 py-8 bg-white">
       <h1 className="text-2xl font-bold mb-1">{business.name}</h1>
@@ -85,6 +99,18 @@ export default function BusinessPage({ params }: BusinessPageProps) {
       <div className="flex gap-3 mb-6">
         <WriteReview businessId={business.id} />
         <SubmitComplaint />
+        {user && (
+          isSaved ? (
+            <Button variant="outline" size="sm" disabled>
+              ✅ Added to List
+            </Button>
+          ) : (
+            <SaveToGroupModal
+              businessId={business.id}
+              businessCategory={business.category}
+            />
+          )
+        )}
       </div>
 
       <h2 className="text-lg font-semibold mb-2">Reviews</h2>

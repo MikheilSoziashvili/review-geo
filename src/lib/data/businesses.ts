@@ -40,7 +40,7 @@ export const businesses: Business[] = [
     id: "2",
     name: "TechFix",
     category: "Electronics Repair",
-    city: "Batumi",
+    city: "Tbilisi",
     rating: 4.2,
     reviewCount: 21,
     about:
@@ -60,7 +60,7 @@ export const businesses: Business[] = [
     id: "3",
     name: "Green Market",
     category: "Grocery Store",
-    city: "Kutaisi",
+    city: "Tbilisi",
     rating: 4.9,
     reviewCount: 87,
     about:
@@ -100,7 +100,7 @@ export const businesses: Business[] = [
     id: "5",
     name: "FitLife Gym",
     category: "Fitness Center",
-    city: "Rustavi",
+    city: "Tbilisi",
     rating: 4.3,
     reviewCount: 58,
     about:
