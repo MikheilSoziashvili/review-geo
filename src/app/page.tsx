@@ -1,47 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { businesses } from "@/lib/data/businesses";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 import { useHydration } from "@/lib/hooks/useHydration";
-import { useAuth } from "@/lib/store/useAuth";
 import { SaveToGroupModal } from "@/components/SaveToGroupModal";
-import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/store/useAuth";
+import { motion } from "framer-motion";
+import { HeroSection } from "@/components/HeroSection";
 
 export default function HomePage() {
   const hydrated = useHydration();
-  const { user, isLoggedIn } = useAuth();
+  const { user } = useAuth();
 
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [businessLabels, setBusinessLabels] = useState<Record<string, string[]>>({});
   const [allLabels, setAllLabels] = useState<string[]>([]);
-  const [savedIds, setSavedIds] = useState<string[]>([]);
-
-  const emailKey = user?.email || "guest";
 
   useEffect(() => {
     if (!hydrated) return;
-
     const stored = localStorage.getItem("reviews");
-    const parsed = stored ? JSON.parse(stored) : {};
+    if (!stored) return;
+
+    const parsed = JSON.parse(stored);
     const labelMap: Record<string, string[]> = {};
     const labelSet = new Set<string>();
 
     Object.entries(parsed).forEach(([businessId, reviews]: [string, any]) => {
       const labels: string[] = [];
-
       reviews.forEach((r: any) => {
         if (r.labels && Array.isArray(r.labels)) {
           r.labels.forEach((label: string) => {
-            const tag = label.toLowerCase().trim();
+            const tag = label.replace(/\\n/g, "").trim().toLowerCase();
             labels.push(tag);
             labelSet.add(tag);
           });
         }
       });
-
       if (labels.length > 0) {
         labelMap[businessId] = labels;
       }
@@ -51,116 +48,115 @@ export default function HomePage() {
     setAllLabels(Array.from(labelSet));
   }, [hydrated]);
 
-  useEffect(() => {
-    if (!hydrated) return;
-
-    const stored = localStorage.getItem("favoritesByGroup");
-    const parsed = stored ? JSON.parse(stored) : {};
-    const userData = parsed[emailKey] || {};
-    const ids = Object.values(userData).flat();
-    setSavedIds(ids);
-  }, [hydrated, emailKey]);
-
-  const updateSavedState = () => {
-    const stored = localStorage.getItem("favoritesByGroup");
-    const parsed = stored ? JSON.parse(stored) : {};
-    const userData = parsed[emailKey] || {};
-    const ids = Object.values(userData).flat();
-    setSavedIds(ids);
-  };
-
   if (!hydrated) return null;
 
-  const filteredBusinesses = businesses.filter((b) => {
-    const matchesSearch =
+  const filtered = businesses.filter((b) => {
+    const matchSearch =
       b.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       b.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
       b.city.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesLabel = selectedLabel
+    const matchLabel = selectedLabel
       ? businessLabels[b.id]?.includes(selectedLabel.toLowerCase())
       : true;
 
-    return matchesSearch && matchesLabel;
+    return matchSearch && matchLabel;
   });
 
+  const grouped = filtered.reduce((acc, biz) => {
+    if (!acc[biz.category]) acc[biz.category] = [];
+    acc[biz.category].push(biz);
+    return acc;
+  }, {} as Record<string, typeof businesses>);
+
   return (
-    <main className="px-6 py-8 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold mb-2">ReviewGeo</h1>
+    <main className="bg-background min-h-screen">
+      <HeroSection searchTerm={searchTerm} setSearchTerm={setSearchTerm}/>
 
-      <input
-        type="text"
-        placeholder="Search businesses or categories..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="mb-4 w-full max-w-md px-4 py-2 border rounded-md shadow-sm"
-      />
-
-      {allLabels.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          <button
-            onClick={() => setSelectedLabel(null)}
-            className={`text-sm px-3 py-1 rounded-full border ${
-              selectedLabel === null
-                ? "bg-black text-white"
-                : "bg-white text-black hover:bg-gray-100"
-            }`}
-          >
-            All
-          </button>
-          {allLabels.map((label) => (
+      <div className="px-6 pb-20 max-w-6xl mx-auto">
+        {allLabels.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-8">
             <button
-              key={label}
-              onClick={() => setSelectedLabel(label)}
-              className={`text-sm px-3 py-1 rounded-full border ${
-                selectedLabel === label
-                  ? "bg-blue-600 text-white"
-                  : "bg-white text-black hover:bg-gray-100"
+              onClick={() => setSelectedLabel(null)}
+              className={`text-sm px-3 py-1 rounded-full border font-medium transition ${
+                selectedLabel === null
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card text-foreground hover:bg-muted"
               }`}
             >
-              #{label}
+              All
             </button>
-          ))}
-        </div>
-      )}
+            {allLabels.map((label) => (
+              <button
+                key={label}
+                onClick={() => setSelectedLabel(label)}
+                className={`text-sm px-3 py-1 rounded-full border transition font-medium ${
+                  selectedLabel === label
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card text-foreground hover:bg-muted"
+                }`}
+              >
+                #{label}
+              </button>
+            ))}
+          </div>
+        )}
 
-      {filteredBusinesses.length === 0 ? (
-        <p className="text-muted-foreground">No businesses found.</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {filteredBusinesses.map((business) => (
-            <Card key={business.id} className="hover:shadow-md transition">
-              <CardContent className="p-4">
-                <Link href={`/business/${business.id}`}>
-                  <h2 className="text-lg font-semibold">{business.name}</h2>
-                  <p className="text-sm text-muted-foreground">
-                    {business.category} • {business.city}
-                  </p>
-                  <p className="text-sm mt-2 text-yellow-600">
-                    ★ {business.rating} ({business.reviewCount} reviews)
-                  </p>
-                </Link>
-
-                {isLoggedIn && (
-                  <div className="mt-3">
-                    {savedIds.includes(business.id) ? (
-                      <Button disabled variant="secondary" size="sm">
-                        ✔ Added
-                      </Button>
-                    ) : (
-                      <SaveToGroupModal
-                        businessId={business.id}
-                        businessCategory={business.category}
-                        onSave={updateSavedState}
-                      />
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+        {Object.keys(grouped).length === 0 ? (
+          <p className="text-muted-foreground text-sm">No businesses found.</p>
+        ) : (
+          Object.entries(grouped).map(([category, list]) => (
+            <div key={category} className="mb-10">
+              <h2 className="text-xl font-semibold text-foreground mb-3">{category}</h2>
+              <div className="flex gap-4 overflow-x-auto pb-2">
+                {list.map((business, idx) => (
+                  <motion.div
+                    key={business.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.03 * idx }}
+                    className="min-w-[280px] max-w-sm"
+                  >
+                    <Card className="hover:shadow-md transition border border-border bg-card">
+                      <CardContent className="p-4 space-y-2">
+                        <Link href={`/business/${business.id}`} className="block space-y-1">
+                          <h3 className="text-lg font-semibold text-foreground">{business.name}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {business.category} • {business.city}
+                          </p>
+                          <p className="text-sm mt-1 text-yellow-600">
+                            ★ {business.rating} ({business.reviewCount} reviews)
+                          </p>
+                          {businessLabels[business.id]?.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {businessLabels[business.id].slice(0, 3).map((label, idx) => (
+                                <span
+                                  key={idx}
+                                  className="text-xs bg-accent text-accent-foreground px-2 py-0.5 rounded-full hover:bg-primary hover:text-white"
+                                >
+                                  #{label}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </Link>
+                        {user && (
+                          <div className="pt-2">
+                            <SaveToGroupModal
+                              businessId={business.id}
+                              businessCategory={business.category}
+                            />
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </main>
   );
 }

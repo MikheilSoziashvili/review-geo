@@ -1,142 +1,126 @@
 "use client";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
-import { toast } from "sonner";
-import { useAuth } from "@/lib/store/useAuth";
 import { Star } from "lucide-react";
+import { useAuth } from "@/lib/store/useAuth";
+import { toast } from "sonner";
 
-interface Props {
-  businessId: string;
-}
+const maxLabels = 3;
 
-export function WriteReview({ businessId }: Props) {
-  const { user, isLoggedIn } = useAuth();
+export function WriteReview({ businessId }: { businessId: string }) {
+  const { user } = useAuth();
   const [rating, setRating] = useState(0);
+  const [hovered, setHovered] = useState(0);
   const [text, setText] = useState("");
-  const [labelInput, setLabelInput] = useState("");
+  const [labels, setLabels] = useState<string[]>([]);
+  const [customLabel, setCustomLabel] = useState("");
 
-  const suggestedLabels = [
-    "friendly staff",
-    "fast service",
-    "great pricing",
-    "clean environment",
-    "cozy",
-    "professional",
-    "good for families",
-  ];
+  const toggleLabel = (label: string) => {
+    setLabels((prev) =>
+      prev.includes(label)
+        ? prev.filter((l) => l !== label)
+        : prev.length < maxLabels
+        ? [...prev, label]
+        : prev
+    );
+  };
 
-  if (!isLoggedIn || !user) return null;
+  const addCustomLabel = () => {
+    const trimmed = customLabel.trim();
+    if (trimmed && !labels.includes(trimmed) && labels.length < maxLabels) {
+      setLabels((prev) => [...prev, trimmed]);
+      setCustomLabel("");
+    }
+  };
 
   const handleSubmit = () => {
     if (!rating || !text.trim()) {
-      toast.error("Please fill in all fields");
+      toast.error("Please provide both a rating and text.");
       return;
     }
 
     const stored = localStorage.getItem("reviews");
     const parsed = stored ? JSON.parse(stored) : {};
-    const reviews = parsed[businessId] || [];
 
-    const alreadyReviewed = reviews.find((r: any) => r.email === user.email);
-    if (alreadyReviewed) {
-      toast.error("You’ve already reviewed this business.");
-      return;
-    }
-
-    const newReview = {
-      name: user.name,
-      email: user.email,
+    const review = {
       rating,
       text,
-      labels: labelInput
-        .split(",")
-        .map((l) => l.trim())
-        .filter((l) => l.length > 0),
-      createdAt: new Date().toISOString(),
+      name: user?.name || "Anonymous",
+      email: user?.email || "",
+      labels,
     };
 
-    const updated = {
-      ...parsed,
-      [businessId]: [...reviews, newReview],
-    };
+    if (!parsed[businessId]) parsed[businessId] = [];
+    parsed[businessId].push(review);
 
-    localStorage.setItem("reviews", JSON.stringify(updated));
-    toast.success("Review submitted!");
+    localStorage.setItem("reviews", JSON.stringify(parsed));
+    toast.success("Review submitted");
+
     setRating(0);
     setText("");
-    setLabelInput("");
-    window.location.reload(); // refresh to show new review
+    setLabels([]);
   };
 
-  const handleAddSuggested = (label: string) => {
-    const current = labelInput
-      .split(",")
-      .map((l) => l.trim())
-      .filter((l) => l);
-    if (!current.includes(label)) {
-      setLabelInput([...current, label].join(", "));
-    }
-  };
+  if (!user) return null;
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button>Write a Review</Button>
+        <Button variant="outline" size="sm">✍️ Write a Review</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Write a Review</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3">
-          <Input disabled value={user.name} />
-
-          <div className="flex gap-1">
+        <div className="space-y-4">
+          <div className="flex items-center gap-1">
             {[1, 2, 3, 4, 5].map((star) => (
               <Star
                 key={star}
-                onClick={() => setRating(star)}
-                className={`w-6 h-6 cursor-pointer ${
-                  rating >= star ? "fill-yellow-400 text-yellow-400" : ""
+                className={`w-6 h-6 cursor-pointer transition ${
+                  star <= (hovered || rating)
+                    ? "fill-yellow-400 text-yellow-400"
+                    : "text-gray-300"
                 }`}
+                onClick={() => setRating(star)}
+                onMouseEnter={() => setHovered(star)}
+                onMouseLeave={() => setHovered(0)}
               />
             ))}
           </div>
 
           <Textarea
-            placeholder="Write your thoughts here..."
             value={text}
             onChange={(e) => setText(e.target.value)}
+            placeholder="Share your experience..."
             rows={4}
           />
 
-          <Input
-            placeholder="Add labels (comma-separated)"
-            value={labelInput}
-            onChange={(e) => setLabelInput(e.target.value)}
-          />
-
-          <div className="flex flex-wrap gap-2">
-            {suggestedLabels.map((label) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => handleAddSuggested(label)}
-                className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded-full"
-              >
-                + {label}
-              </button>
-            ))}
+          <div>
+            <p className="text-sm mb-1">Add up to {maxLabels} labels:</p>
+            <div className="flex gap-2 flex-wrap">
+              {labels.map((label, idx) => (
+                <span
+                  key={idx}
+                  className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full"
+                >
+                  #{label}
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-2">
+              <Input
+                placeholder="Enter label"
+                value={customLabel}
+                onChange={(e) => setCustomLabel(e.target.value)}
+              />
+              <Button type="button" onClick={addCustomLabel}>Add</Button>
+            </div>
           </div>
 
           <Button className="w-full" onClick={handleSubmit}>
