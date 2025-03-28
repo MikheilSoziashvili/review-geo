@@ -20,8 +20,12 @@ export default function ProfilePage() {
   const [groupedFavorites, setGroupedFavorites] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
-    if (!isLoggedIn) router.push("/login");
-  }, [isLoggedIn, router]);
+    if (!isLoggedIn) return;
+
+    if (user?.isBusiness) {
+      router.push("/business-profile");
+    }
+  }, [isLoggedIn, user?.isBusiness, router]);
 
   useEffect(() => {
     if (!user?.email) return;
@@ -43,7 +47,7 @@ export default function ProfilePage() {
     setGroupedFavorites(data[user.email]);
   };
 
-  if (!user) return null;
+  if (!user || user.isBusiness) return null;
 
   return (
     <main className="px-6 py-10 max-w-6xl mx-auto">

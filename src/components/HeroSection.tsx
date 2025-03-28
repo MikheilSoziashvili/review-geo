@@ -23,12 +23,12 @@ export function HeroSection({ searchTerm, setSearchTerm }: HeroProps) {
         {/* Left */}
         <div className="max-w-2xl text-center md:text-left">
           <h1 className="text-4xl md:text-6xl font-bold leading-tight tracking-tight text-gray-900 mb-6">
-            Discover Smarter. <br />
-            <span className="text-brand-primary">Review Openly.</span> <br />
-            Connect Authentically.
+            Discover. <br />
+            <span className="text-brand-primary">Contribute.</span> <br />
+            Connect.
           </h1>
           <p className="text-muted-foreground text-lg mb-10">
-            Join our community of real reviewers and empower each other with genuine insights.
+            Join our community of reviewers and empower each other with genuine insights.
             Your honest feedback helps everyone make better choices.
           </p>
 
