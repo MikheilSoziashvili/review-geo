@@ -1,69 +1,92 @@
 "use client";
 
 import { useAuth } from "@/lib/store/useAuth";
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useEffect } from "react";
 
 export default function BusinessProfilePage() {
   const { user, isLoggedIn, logout } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoggedIn) router.push("/login");
-  }, [isLoggedIn, router]);
+    if (!isLoggedIn || !user?.isBusiness) {
+      router.push("/login");
+    }
+  }, [isLoggedIn, user?.isBusiness, router]);
 
-  if (!user) return null;
+  if (!user || !user.isBusiness) return null;
 
   return (
-    <main className="px-6 py-10 max-w-6xl mx-auto text-foreground">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">{user.name}'s Business Profile</h1>
-          <p className="text-muted-foreground">{user.email}</p>
-        </div>
-        <Button variant="destructive" onClick={logout}>Logout</Button>
+    <main className="px-6 py-10 max-w-6xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-foreground">Welcome, {user.name} 👋</h1>
+        <p className="text-muted-foreground">{user.email}</p>
       </div>
 
-      {/* Overview */}
-      <section className="mb-10">
-        <h2 className="text-xl font-semibold mb-2">Overview</h2>
-        <div className="bg-card p-4 rounded shadow-sm border">
-          <p className="text-sm text-muted-foreground">Add logo, update category, etc.</p>
-        </div>
-      </section>
+      <Tabs defaultValue="overview" className="mb-10">
+        <TabsList className="mb-4">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="reviews">Reviews</TabsTrigger>
+          <TabsTrigger value="complaints">Complaints</TabsTrigger>
+          <TabsTrigger value="info">Business Info</TabsTrigger>
+          <TabsTrigger value="media">Media</TabsTrigger>
+        </TabsList>
 
-      {/* Reviews */}
-      <section className="mb-10">
-        <h2 className="text-xl font-semibold mb-2">Reviews</h2>
-        <div className="bg-card p-4 rounded shadow-sm border">
-          <p className="text-sm text-muted-foreground">Reviews submitted by users will appear here.</p>
-        </div>
-      </section>
+        {/* Overview Section */}
+        <TabsContent value="overview">
+          <Card>
+            <CardContent className="p-6 text-muted-foreground">
+              Here’s a quick snapshot of your business performance and updates.
+              This will show analytics or summaries once backend is connected.
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Complaints */}
-      <section className="mb-10">
-        <h2 className="text-xl font-semibold mb-2">Complaints</h2>
-        <div className="bg-card p-4 rounded shadow-sm border">
-          <p className="text-sm text-muted-foreground">Private complaints sent by users will be shown here.</p>
-        </div>
-      </section>
+        {/* Reviews Section */}
+        <TabsContent value="reviews">
+          <Card>
+            <CardContent className="p-6 text-muted-foreground">
+              All customer reviews for your business will appear here.
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Business Info */}
-      <section className="mb-10">
-        <h2 className="text-xl font-semibold mb-2">Business Information</h2>
-        <div className="bg-card p-4 rounded shadow-sm border">
-          <p className="text-sm text-muted-foreground">Editable fields (address, website, hours, etc.)</p>
-        </div>
-      </section>
+        {/* Complaints Section */}
+        <TabsContent value="complaints">
+          <Card>
+            <CardContent className="p-6 text-muted-foreground">
+              This is where complaints submitted by users will be displayed.
+              You’ll be able to respond once backend is integrated.
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Media */}
-      <section>
-        <h2 className="text-xl font-semibold mb-2">Media</h2>
-        <div className="bg-card p-4 rounded shadow-sm border">
-          <p className="text-sm text-muted-foreground">Coming soon: upload photos, update brand visuals.</p>
-        </div>
-      </section>
+        {/* Business Info Section */}
+        <TabsContent value="info">
+          <Card>
+            <CardContent className="p-6 text-muted-foreground space-y-2">
+              Editable business details such as contact info, address, etc.
+              will appear here.
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Media Section */}
+        <TabsContent value="media">
+          <Card>
+            <CardContent className="p-6 text-muted-foreground">
+              Upload and manage images or logos for your business.
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <Button variant="destructive" onClick={logout}>
+        Logout
+      </Button>
     </main>
   );
 }
